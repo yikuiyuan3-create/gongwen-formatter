@@ -14,10 +14,10 @@ foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32,[Microsoft.Win32.
     $registry = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,$view)
     try {
         $key = $registry.OpenSubKey('Software\Classes\CLSID\{3B873652-4D36-4CE7-B43C-B93B9F1B7A01}\InprocServer32')
-        if (!$key -or [string]$key.GetValue('CodeBase') -cne $expectedCodeBase) { throw 'COM CodeBase URI did not match the special-character install path' }
+        if (!$key -or ![string]::Equals([Uri]::UnescapeDataString([string]$key.GetValue('CodeBase')),$expectedCodeBase,[StringComparison]::OrdinalIgnoreCase)) { Write-Output ('Actual CodeBase: '+$key.GetValue('CodeBase')); Write-Output ('Expected target: '+$expectedCodeBase); throw 'COM CodeBase did not resolve to the complete expected install path' }
         $key.Close()
         $versionKey=$registry.OpenSubKey("Software\Classes\CLSID\{3B873652-4D36-4CE7-B43C-B93B9F1B7A01}\InprocServer32\$version.0")
-        if(!$versionKey -or [string]$versionKey.GetValue('CodeBase') -cne $expectedCodeBase){throw 'Missing exact framework version registration'}
+        if(!$versionKey -or ![string]::Equals([Uri]::UnescapeDataString([string]$versionKey.GetValue('CodeBase')),$expectedCodeBase,[StringComparison]::OrdinalIgnoreCase)){throw 'Missing exact framework version registration'}
         $versionKey.Close()
         foreach($id in @('{39F70D9C-9C3A-37DF-BE3A-F9A5813EBFCA}','{33213C29-1EF1-3941-83B7-709ED42ABA31}')) {
             $recordKey=$registry.OpenSubKey("Software\Classes\Record\$id\$version.0")
