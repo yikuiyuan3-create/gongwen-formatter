@@ -12,17 +12,21 @@ from publication_scan import source_files,scan
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--outputs',type=Path,default=ROOT/'work/releases')
+    parser.add_argument('--package-dir',type=Path,help='Downloaded passing Windows Actions artifact root')
+    parser.add_argument('--ci-url',default='')
     args=parser.parse_args()
     core=json.loads((ROOT/'evidence/core-tests.json').read_text())
-    checks=json.loads((ROOT/'evidence/release-checks.json').read_text())
-    package=json.loads((ROOT/'evidence/installer-verification.json').read_text())
+    evidence_root=args.package_dir/'evidence' if args.package_dir else ROOT/'evidence'
+    checks=json.loads((evidence_root/'release-checks.json').read_text(encoding='utf-8-sig'))
+    package=json.loads((evidence_root/'installer-verification.json').read_text(encoding='utf-8-sig'))
+    installer=args.package_dir/'work'/INSTALLER.name if args.package_dir else INSTALLER
     assert core['failed']==0 and checks['version']==VERSION and package['passed']
     assert all(v['failed']==0 for v in checks['checks'].values())
-    digest=hashlib.sha256(INSTALLER.read_bytes()).hexdigest()
+    digest=hashlib.sha256(installer.read_bytes()).hexdigest()
     assert digest==package['installer_sha256'],'Installer changed after verification'
     scan()
     destination=args.outputs/RELEASE_NAME;destination.mkdir(parents=True,exist_ok=False)
-    shutil.copyfile(INSTALLER,destination/INSTALLER.name)
+    shutil.copyfile(installer,destination/INSTALLER.name)
     for name in ['LICENSE','NOTICE.md','README.md']:
         shutil.copyfile(ROOT/name,destination/name)
     shutil.copyfile(ROOT/'docs/插件安装与使用.md',destination/'安装与使用.md')
@@ -35,6 +39,13 @@ def main():
         z.write(tested/'formatted.docx','05_通知_排版结果.docx')
         z.write(tested/'protected-numbered-shipping-output.docx','08_保护编号_编辑排版结果.docx')
     evidence={'version':VERSION,'date':RELEASE_DATE,'checks':checks['checks'],'package':{k:v for k,v in package.items() if k!='inspection_directory'},'wps_word_toolbar_verified':False,'windows_runtime_verified':False}
+    windows_proof=[]
+    if args.package_dir:
+        for name in ['windows-install-check.json','com-activation-32.json','com-activation-64.json']:
+            proof=json.loads((evidence_root/name).read_text(encoding='utf-8-sig'))
+            assert proof['passed'],'Windows evidence failed: '+name
+            windows_proof.append(proof)
+        evidence.update(windows_install_verified=True,com_32_and_64_verified=True,windows_checks=windows_proof,ci_url=args.ci_url)
     (destination/'verification.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2))
     counts='；'.join(f"{k}: {v['passed']}通过/{v['failed']}失败" for k,v in checks['checks'].items())
     report=f'''# 公文一键排版 v{VERSION} 公开发布验证记录
@@ -53,6 +64,8 @@ def main():
 
 安装与使用见同目录文档。源码和下载：https://github.com/yikuiyuan3-create/gongwen-formatter
 '''
+    if windows_proof:
+        report+='\n## Windows自动验证已通过\n\n交付安装器直接取自通过的Windows CI产物，哈希与CI包内校验记录一致。普通用户安装、32/64位COM激活、原生Ribbon GetCustomUI调用、中文/空格/#安装路径及卸载保留未知文件均已实际检查。真实WPS/Word工具栏操作与打印仍待实机验收。\n\n'+args.ci_url+'\n'
     (destination/'验证报告.md').write_text(report)
     files=sorted(p for p in destination.iterdir() if p.is_file())
     (destination/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files))
