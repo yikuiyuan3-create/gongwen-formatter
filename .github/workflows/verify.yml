@@ -1,0 +1,55 @@
+name: Verify formatter and Office add-in
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python scripts/create_samples.py
+      - run: dotnet run --project tests/Gongwen.Tests -c Release -- .
+      - run: dotnet run --project tests/Gongwen.OfficeAddin.Tests -c Release
+      - run: dotnet run --project tests/Gongwen.Integration.Tests -c Release
+      - run: python scripts/publication_scan.py
+  windows-package:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install build tools
+        shell: powershell
+        run: choco install nsis 7zip --no-progress -y
+      - name: Build and verify package
+        shell: powershell
+        run: |
+          $env:PATH += ';C:\Program Files (x86)\NSIS;C:\Program Files\7-Zip'
+          python scripts/build.py --dotnet dotnet --runtime-version 10.0.13
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/verify_installer.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\scripts\windows_install_check.ps1 -Installer (Get-ChildItem work\*_Setup_*_x64.exe | Select-Object -First 1).FullName
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-package-verification
+          path: |
+            evidence/*.json
+            work/*_Setup_*_x64.exe
+          if-no-files-found: warn

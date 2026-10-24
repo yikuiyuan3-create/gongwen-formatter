@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Gongwen.OfficeAddin.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Gongwen.OfficeAddin/LaunchPolicy.cs" Link="LaunchPolicy.cs" />
+    <Compile Include="../../src/Gongwen.OfficeAddin/ReflectionDocumentHost.cs" Link="ReflectionDocumentHost.cs" />
+    <Compile Include="../../src/Gongwen.OfficeAddin/RibbonDefinition.cs" Link="RibbonDefinition.cs" />
+    <Compile Include="../../src/Gongwen.OfficeAddin/ComContracts.cs" Link="ComContracts.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+work/
+evidence/
+outputs/
+__pycache__/
+*.pyc
+.DS_Store
+._*
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+.vs/
+.vscode/

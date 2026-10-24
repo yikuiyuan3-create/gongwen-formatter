@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>Gongwen.Integration.Tests</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Gongwen.Desktop/OfficeImportCommand.cs" Link="OfficeImportCommand.cs" />
+    <Compile Include="../../src/Gongwen.Desktop/OfficeImportProtocol.cs" Link="OfficeImportProtocol.cs" />
+    <Compile Include="../../src/Gongwen.Desktop/OfficeImportPipe.cs" Link="OfficeImportPipe.cs" />
+  </ItemGroup>
+</Project>
