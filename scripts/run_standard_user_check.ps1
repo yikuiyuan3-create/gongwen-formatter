@@ -22,6 +22,8 @@ try {
 $ErrorActionPreference='Stop'
 Set-Location $PSScriptRoot
 $env:RUNNER_TEMP=Join-Path $PSScriptRoot 'temp'
+$env:TEMP=$env:RUNNER_TEMP
+$env:TMP=$env:RUNNER_TEMP
 $principal=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Expected a standard user'}
 & ./scripts/windows_install_check.ps1 -Installer (Join-Path $PSScriptRoot 'setup.exe')
