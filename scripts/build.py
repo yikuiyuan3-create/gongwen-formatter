@@ -61,8 +61,12 @@ def main():
     for p in sorted((p for p in payload.rglob('*') if p.is_dir()),key=lambda p:len(p.parts),reverse=True):
         lines.append('RMDir "$INSTDIR\\app-${APPVERSION}\\'+escape(p.relative_to(payload))+'"')
     lines.append('RMDir "$INSTDIR\\app-${APPVERSION}"')
-    (ROOT/'packaging/uninstall-files.nsh').write_text('\n'.join(lines)+'\n')
-    run(['makensis','-V3','-DAPPVERSION='+VERSION,'-DPAYLOAD='+str(payload),'-DOUTPUT='+str(INSTALLER),ROOT/'packaging/installer.nsi'])
+    (ROOT/'packaging/uninstall-files.nsh').write_text('\n'.join(lines)+'\n',encoding='utf-8-sig')
+    # Windows makensis uses native file separators; avoid non-ASCII CLI output names.
+    compiled_installer=ROOT/'work'/f'GongwenFormatter_Setup_{VERSION}_x64.exe'
+    assert not compiled_installer.exists() and not INSTALLER.exists(),'Preserve the previous installer before rebuilding'
+    run(['makensis','-V3','-DAPPVERSION='+VERSION,'-DPAYLOAD='+str(payload),'-DPAYLOAD_FILESPEC='+str(payload/'*'),'-DOUTPUT='+str(compiled_installer),ROOT/'packaging/installer.nsi'])
+    compiled_installer.rename(INSTALLER)
     manifest=[{'path':str(p.relative_to(payload)),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in files]
     (ROOT/'evidence/payload-manifest.json').write_text(json.dumps({'runtime_version':args.runtime_version,'files':manifest},ensure_ascii=False,indent=2))
     (ROOT/'evidence/release-checks.json').write_text(json.dumps({'version':VERSION,'runtime_version':args.runtime_version,'checks':checks,'windows_office_host_verified':False},ensure_ascii=False,indent=2))

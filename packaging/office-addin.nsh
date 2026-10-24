@@ -1,4 +1,4 @@
-; Only this product's per-user registration. Never change Office security policy.
+﻿; Only this product's per-user registration. Never change Office security policy.
 !define ADDIN_PROGID "Gongwen.OfficeAddin.Connect"
 !define ADDIN_CLSID "{3B873652-4D36-4CE7-B43C-B93B9F1B7A01}"
 !define ADDIN_CLASS "Gongwen.OfficeAddin.Connect"

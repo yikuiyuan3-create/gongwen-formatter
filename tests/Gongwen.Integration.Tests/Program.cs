@@ -68,5 +68,14 @@ await Test("real_local_pipe_delivers_path_and_busy_then_survives_bad_client",asy
  Check(await OfficeImportPipeClient.SendAsync(name,@"C:\fictional\again.docx")==OfficeImportDelivery.Accepted,"Bad client killed listener");
  server.Dispose();await loop.WaitAsync(TimeSpan.FromSeconds(3));
 });
+await Test("rapid_sequential_clients_keep_listener_and_ACKs_alive",async()=>{
+ string name="gw"+Guid.NewGuid().ToString("N")[..12];int received=0;
+ using var server=new OfficeImportPipeServer(name,(_,_)=>{Interlocked.Increment(ref received);return Task.FromResult(OfficeImportDelivery.Accepted);});
+ var loop=server.RunAsync();
+ for(int index=0;index<80;index++)
+  Check(await OfficeImportPipeClient.SendAsync(name,@"C:\fictional\sequential-"+index+".docx")==OfficeImportDelivery.Accepted,"Sequential client lost its acknowledgement");
+ Check(Volatile.Read(ref received)==80,"Sequential clients lost a request");
+ server.Dispose();await loop.WaitAsync(TimeSpan.FromSeconds(3));
+});
 Console.WriteLine($"RESULT {passed} passed, {failed} failed; real local IPC exercised, WPS/Word host not exercised");
 return failed==0?0:1;

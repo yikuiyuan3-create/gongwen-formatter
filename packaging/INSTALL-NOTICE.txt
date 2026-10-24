@@ -1,4 +1,4 @@
-公文一键排版 v0.4.0 · WPS/Word COM工具栏插件 · MIT免费开源
+﻿公文一键排版 v0.4.0 · WPS/Word COM工具栏插件 · MIT免费开源
 
 工具栏需要.NET Framework 4.8、支持COM与Ribbon的Windows桌面办公软件。安装、更新或卸载前关闭WPS和Word。支持的版本以实际验收为准。
 

@@ -1,4 +1,4 @@
-; Exact installed-file manifest; never recurse-delete user directories.
+﻿; Exact installed-file manifest; never recurse-delete user directories.
 Delete "$INSTDIR\app-${APPVERSION}\Accessibility.dll"
 Delete "$INSTDIR\app-${APPVERSION}\D3DCompiler_47_cor3.dll"
 Delete "$INSTDIR\app-${APPVERSION}\DirectWriteForwarder.dll"

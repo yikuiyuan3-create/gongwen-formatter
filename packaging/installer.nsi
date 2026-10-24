@@ -1,4 +1,4 @@
-Unicode true
+﻿Unicode true
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "WinVer.nsh"
@@ -11,6 +11,9 @@ Unicode true
 !endif
 !ifndef OUTPUT
 !define OUTPUT "../work/公文一键排版_Setup_${APPVERSION}_x64.exe"
+!endif
+!ifndef PAYLOAD_FILESPEC
+!error "Build with scripts/build.py to supply the native payload file specification."
 !endif
 Name "公文一键排版"
 OutFile "${OUTPUT}"
@@ -75,7 +78,7 @@ FunctionEnd
 Section "公文一键排版" SEC_MAIN
   SetOutPath "$INSTDIR\app-${APPVERSION}"
   ClearErrors
-  File /r "${PAYLOAD}/*"
+  File /r "${PAYLOAD_FILESPEC}"
   ${If} ${Errors}
     MessageBox MB_ICONSTOP "组件未完整写入，安装尚未完成。请检查空间和权限后重试。原稿未被修改。" /SD IDOK
     Abort

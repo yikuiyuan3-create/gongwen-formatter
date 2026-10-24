@@ -31,32 +31,56 @@ internal sealed class OfficeImportPipeServer(string pipeName, Func<string, Cance
     private int _disposed;
     public async Task RunAsync()
     {
-        while (!_stop.IsCancellationRequested)
+        // Keep the listener alive across clients. On Unix, disposing the final server
+        // reference closes the shared listening socket and can reset already queued clients.
+        using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly, 4096, 4096);
+        Interlocked.Exchange(ref _active, pipe);
+        try
         {
-            // CurrentUserOnly applies an owner-only boundary; no TCP/HTTP listener is created.
-            using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly, 4096, 4096);
-            Interlocked.Exchange(ref _active, pipe);
-            try
+            while (!_stop.IsCancellationRequested)
             {
-                await pipe.WaitForConnectionAsync(_stop.Token).ConfigureAwait(false);
-                using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
-                requestTimeout.CancelAfter(TimeSpan.FromSeconds(3));
-                var token = requestTimeout.Token;
-                OfficeImportDelivery status;
+                bool connected = false;
                 try
                 {
-                    string path = await OfficeImportProtocol.ReadPathAsync(pipe, token).ConfigureAwait(false);
-                    status = await deliver(path, token).ConfigureAwait(false);
+                    await pipe.WaitForConnectionAsync(_stop.Token).ConfigureAwait(false);
+                    connected = true;
+                    using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
+                    requestTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+                    var token = requestTimeout.Token;
+                    OfficeImportDelivery status;
+                    try
+                    {
+                        string path = await OfficeImportProtocol.ReadPathAsync(pipe, token).ConfigureAwait(false);
+                        status = await deliver(path, token).ConfigureAwait(false);
+                    }
+                    catch (InvalidDataException) { status = OfficeImportDelivery.Rejected; }
+                    await OfficeImportProtocol.WriteDeliveryAsync(pipe, status, token).ConfigureAwait(false);
+                    // SendAsync closes its connection after reading the ACK. Wait for that
+                    // close before Disconnect so Windows cannot discard an unread ACK.
+                    // The same request deadline bounds stalled or extra-data clients.
+                    byte[] clientClosed = new byte[1];
+                    _ = await pipe.ReadAsync(clientClosed, token).ConfigureAwait(false);
                 }
-                catch (InvalidDataException) { status = OfficeImportDelivery.Rejected; }
-                await OfficeImportProtocol.WriteDeliveryAsync(pipe, status, token).ConfigureAwait(false);
+                catch (OperationCanceledException) when (_stop.IsCancellationRequested) { break; }
+                catch (OperationCanceledException) when (connected) { }
+                catch (IOException) when (_stop.IsCancellationRequested) { break; }
+                catch (IOException) when (connected) { }
+                catch (ObjectDisposedException) when (_stop.IsCancellationRequested) { break; }
+                finally
+                {
+                    // A peer close may mark the stream Broken (IsConnected == false),
+                    // but Disconnect is still required before the next accept.
+                    if (connected && !_stop.IsCancellationRequested)
+                    {
+                        try { pipe.Disconnect(); }
+                        catch (ObjectDisposedException) when (_stop.IsCancellationRequested) { }
+                        catch (IOException) when (_stop.IsCancellationRequested) { }
+                    }
+                }
             }
-            catch (OperationCanceledException) { }
-            catch (IOException) { }
-            catch (ObjectDisposedException) when (_stop.IsCancellationRequested) { }
-            finally { Interlocked.CompareExchange(ref _active, null, pipe); }
         }
+        finally { Interlocked.CompareExchange(ref _active, null, pipe); }
     }
     public void Dispose()
     {
