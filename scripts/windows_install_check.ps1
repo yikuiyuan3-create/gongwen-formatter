@@ -28,8 +28,14 @@ foreach ($bits in @(64,32)) {
     $shellDir = if ($bits -eq 64) { 'System32' } else { 'SysWOW64' }
     $powershell = Join-Path $env:WINDIR "$shellDir\WindowsPowerShell\v1.0\powershell.exe"
     $result = Join-Path $evidenceRoot "com-activation-$bits.json"
-    $process = Start-Process $powershell -ArgumentList "-NoProfile -NonInteractive -File `"$probe`" -ResultPath `"$result`"" -Wait -PassThru
-    if ($process.ExitCode -ne 0 -or !(Test-Path $result)) { throw "COM activation failed for $bits-bit host" }
+    $stdoutFile = Join-Path $evidenceRoot "com-probe-$bits.stdout.txt"
+    $stderrFile = Join-Path $evidenceRoot "com-probe-$bits.stderr.txt"
+    $process = Start-Process $powershell -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile -ArgumentList "-NoProfile -NonInteractive -File `"$probe`" -ResultPath `"$result`"" -Wait -PassThru
+    if (Test-Path $stdoutFile) { Get-Content $stdoutFile | Write-Output }
+    if ($process.ExitCode -ne 0 -or !(Test-Path $result)) {
+        if (Test-Path $stderrFile) { Get-Content $stderrFile | Write-Output }
+        throw "COM activation failed for $bits-bit host (exit $($process.ExitCode))"
+    }
     $data = Get-Content $result | ConvertFrom-Json
     if (!$data.passed -or $data.process_bits -ne $bits) { throw 'COM probe result mismatch' }
 }

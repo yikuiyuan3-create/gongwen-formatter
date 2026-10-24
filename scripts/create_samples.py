@@ -3,7 +3,7 @@
 import base64
 from pathlib import Path
 import xml.etree.ElementTree as ET
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 ROOT = Path(__file__).resolve().parents[1]
 W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
@@ -24,6 +24,15 @@ TEXTS = [
     '示例公司办公室（虚构）',
     '2026年10月1日',
 ]
+
+def write_part(archive, name, data):
+    # Stable fictional fixture timestamps keep rebuilds from modifying tracked files.
+    info = ZipInfo(name, (2026, 10, 1, 0, 0, 0))
+    info.compress_type = ZIP_DEFLATED
+    info.create_system = 3
+    info.external_attr = 0o100644 << 16
+    archive.writestr(info, data)
+
 
 def paragraph(text):
     p = ET.Element(f'{{{W}}}p')
@@ -78,14 +87,14 @@ def create(path, title=None, table=False, protection=False, revision=False, mult
         types=types.replace('</Types>',f'<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>')
         document_rels=document_rels.replace('</Relationships>','<Relationship Id="rIdNumbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>')
     with ZipFile(path,'w',ZIP_DEFLATED) as z:
-        z.writestr('[Content_Types].xml',types)
-        z.writestr('_rels/.rels',rels)
-        z.writestr('word/document.xml',ET.tostring(doc,encoding='utf-8',xml_declaration=True))
-        z.writestr('word/_rels/document.xml.rels',document_rels)
-        z.writestr('word/styles.xml',f'<w:styles xmlns:w="{W}"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>')
-        z.writestr('word/settings.xml',ET.tostring(settings,encoding='utf-8',xml_declaration=True))
+        write_part(z,'[Content_Types].xml',types)
+        write_part(z,'_rels/.rels',rels)
+        write_part(z,'word/document.xml',ET.tostring(doc,encoding='utf-8',xml_declaration=True))
+        write_part(z,'word/_rels/document.xml.rels',document_rels)
+        write_part(z,'word/styles.xml',f'<w:styles xmlns:w="{W}"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>')
+        write_part(z,'word/settings.xml',ET.tostring(settings,encoding='utf-8',xml_declaration=True))
         if numbering:
-            z.writestr('word/numbering.xml',f'<w:numbering xmlns:w="{W}"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="720"/></w:tabs><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>')
+            write_part(z,'word/numbering.xml',f'<w:numbering xmlns:w="{W}"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="720"/></w:tabs><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>')
 
 def main():
     samples=ROOT/'samples';samples.mkdir(exist_ok=True)

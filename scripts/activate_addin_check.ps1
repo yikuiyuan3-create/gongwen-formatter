@@ -18,15 +18,18 @@ public static class NativeRibbonProbe {
     }
 }
 '@
+Write-Output 'Probe: creating COM class'
 $instance = New-Object -ComObject 'Gongwen.OfficeAddin.Connect'
 $unknown = [Runtime.InteropServices.Marshal]::GetIUnknownForObject($instance)
 try {
     foreach ($id in @('B65AD801-ABAF-11D0-BB8B-00A0C90F2744','000C0396-0000-0000-C000-000000000046','C8B34047-5D6E-4A52-9D46-85B523D6F2D1')) {
+        Write-Output "Probe: querying $id"
         $iid = [Guid]$id
         $pointer = [IntPtr]::Zero
         $status = [Runtime.InteropServices.Marshal]::QueryInterface($unknown, [ref]$iid, [ref]$pointer)
         if ($status -ne 0 -or $pointer -eq [IntPtr]::Zero) { throw 'Expected COM interface was not exposed' }
         if ($id -eq '000C0396-0000-0000-C000-000000000046') {
+            Write-Output 'Probe: invoking native Ribbon vtable'
             [xml]$ribbon = [NativeRibbonProbe]::GetXml($pointer)
             if ($ribbon.DocumentElement.LocalName -ne 'customUI') { throw 'Native GetCustomUI did not return Ribbon XML' }
         }
