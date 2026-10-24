@@ -65,13 +65,15 @@ def main():
     assert all(x['version']==manifest['runtime_version'] for x in included),'Wrong runtime version'
     addin=pe(payload/'office-addin/Gongwen.OfficeAddin.dll')
     assert addin['machine']=='0x14c' and addin['clr_flags'] is not None and addin['clr_flags']&1 and not addin['clr_flags']&2,'Expected AnyCPU IL-only, not 32-bit-required add-in'
+    registrar=pe(payload/'office-addin/Gongwen.AddinRegistrar.exe')
+    assert registrar['machine']=='0x14c' and registrar['clr_flags'] is not None and registrar['clr_flags']&1 and not registrar['clr_flags']&2,'Expected AnyCPU registrar'
     assert (payload/'LICENSE').is_file() and (payload/'NOTICE.md').is_file(),'Missing open-source license notices'
     report={
         'passed':True,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest(),
         'installer_bytes':installer.stat().st_size,'installer_pe':pe(installer),
         'verified_payload_files':matched,'payload_bytes':sum(e['bytes'] for e in manifest['files']),
         'native_images':images,'included_frameworks':included,
-        'office_addin_pe':addin,'office_addin_host_verified':False,
+        'office_addin_pe':addin,'registrar_pe':registrar,'office_addin_host_verified':False,
         'verification':'NSIS archive test/extraction, exact payload bytes and PE/CLR headers on '+platform.system(),
         'windows_install_startup_verified':False,'wps_word_compatibility_verified':False,
         'inspection_directory':str(inspection)

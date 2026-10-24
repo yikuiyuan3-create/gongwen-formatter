@@ -26,7 +26,7 @@ $env:TEMP=$env:RUNNER_TEMP
 $env:TMP=$env:RUNNER_TEMP
 $principal=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Expected a standard user'}
-& ./scripts/windows_install_check.ps1 -Installer (Join-Path $PSScriptRoot 'setup.exe') -DiagnosticRegasm
+& ./scripts/windows_install_check.ps1 -Installer (Join-Path $PSScriptRoot 'setup.exe')
 '@ | Set-Content -Encoding UTF8 $entry
     & icacls.exe $sandbox /grant "*$($account.SID.Value):(OI)(CI)M" /T /Q | Out-Null
     if($LASTEXITCODE -ne 0){throw 'Cannot grant access to isolated CI test folder'}

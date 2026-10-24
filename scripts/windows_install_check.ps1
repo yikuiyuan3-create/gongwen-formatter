@@ -1,4 +1,4 @@
-﻿param([Parameter(Mandatory=$true)][string]$Installer,[switch]$DiagnosticRegasm)
+﻿param([Parameter(Mandatory=$true)][string]$Installer)
 $ErrorActionPreference = 'Stop'
 $installRoot = Join-Path $env:RUNNER_TEMP ('Gongwen 插件 # '+[Guid]::NewGuid().ToString('N').Substring(0,8))
 $evidenceRoot = Join-Path (Get-Location) 'evidence'
@@ -9,26 +9,21 @@ $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Vers
 $appRoot = Join-Path $installRoot "app-$version"
 $addin = Join-Path $appRoot 'office-addin\Gongwen.OfficeAddin.dll'
 if (!(Test-Path $addin)) { throw 'Installed add-in is missing' }
-$expectedUri = ([Uri]$addin).AbsoluteUri
-if($DiagnosticRegasm) {
-    $regfile=Join-Path $env:RUNNER_TEMP 'diagnostic-regasm.reg'
-    $regasm=Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/RegAsm.exe'
-    & $regasm $addin "/regfile:$regfile" /codebase
-    if($LASTEXITCODE -ne 0){throw 'RegAsm export failed'}
-    $text=[IO.File]::ReadAllText($regfile).Replace('HKEY_CLASSES_ROOT\','HKEY_CURRENT_USER\Software\Classes\')
-    [IO.File]::WriteAllText($regfile,$text,[Text.Encoding]::Unicode)
-    & reg.exe import $regfile /reg:32
-    & reg.exe import $regfile /reg:64
-    if($LASTEXITCODE -ne 0){throw 'Per-user diagnostic registration failed'}
-    Write-Output 'Diagnostic: imported exact RegAsm class/enum records into this test user only.'
-}
-
+$expectedCodeBase='file:///'+$addin.Replace('\','/')
 foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32,[Microsoft.Win32.RegistryView]::Registry64)) {
     $registry = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,$view)
     try {
         $key = $registry.OpenSubKey('Software\Classes\CLSID\{3B873652-4D36-4CE7-B43C-B93B9F1B7A01}\InprocServer32')
-        if (!$key -or (!$DiagnosticRegasm -and [Uri]$key.GetValue('CodeBase') -ne [Uri]$expectedUri)) { throw 'COM CodeBase URI did not match the special-character install path' }
+        if (!$key -or [string]$key.GetValue('CodeBase') -cne $expectedCodeBase) { throw 'COM CodeBase URI did not match the special-character install path' }
         $key.Close()
+        $versionKey=$registry.OpenSubKey("Software\Classes\CLSID\{3B873652-4D36-4CE7-B43C-B93B9F1B7A01}\InprocServer32\$version.0")
+        if(!$versionKey -or [string]$versionKey.GetValue('CodeBase') -cne $expectedCodeBase){throw 'Missing exact framework version registration'}
+        $versionKey.Close()
+        foreach($id in @('{39F70D9C-9C3A-37DF-BE3A-F9A5813EBFCA}','{33213C29-1EF1-3941-83B7-709ED42ABA31}')) {
+            $recordKey=$registry.OpenSubKey("Software\Classes\Record\$id\$version.0")
+            if(!$recordKey){throw 'Missing enum record registration'}
+            $recordKey.Close()
+        }
         foreach ($path in @('Software\Microsoft\Office\Word\Addins\Gongwen.OfficeAddin.Connect','Software\Kingsoft\Office\WPS\Addins\Gongwen.OfficeAddin.Connect')) {
             $key = $registry.OpenSubKey($path)
             if (!$key -or $key.GetValue('LoadBehavior') -ne 3) { throw 'Expected host registration missing' }

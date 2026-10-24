@@ -29,7 +29,7 @@ def main():
     args=parser.parse_args()
     run([sys.executable,ROOT/'scripts/create_samples.py'])
     checks={}
-    for name,project,extra in [('core','Gongwen.Tests',['--',ROOT]),('office_addin','Gongwen.OfficeAddin.Tests',[]),('local_ipc','Gongwen.Integration.Tests',[])]:
+    for name,project,extra in [('core','Gongwen.Tests',['--',ROOT]),('office_addin','Gongwen.OfficeAddin.Tests',[]),('registrar','Gongwen.AddinRegistrar.Tests',[]),('local_ipc','Gongwen.Integration.Tests',[])]:
         log=run([args.dotnet,'run','--project',ROOT/'tests'/project/(project+'.csproj'),'-c','Release',*extra])
         matched=re.search(r'RESULT (\d+) passed, (\d+) failed',log)
         assert matched and int(matched[2])==0,'Missing passing test summary: '+name
@@ -37,7 +37,7 @@ def main():
     payload=PAYLOAD
     if payload.exists():raise SystemExit('Publish directory already exists; use a fresh staging path after inspecting the previous output.')
     run([args.dotnet,'publish',ROOT/'src/Gongwen.Desktop/Gongwen.Desktop.csproj','-c','Release','-r','win-x64','--self-contained','true','-o',payload,'-p:RuntimeFrameworkVersion='+args.runtime_version,'-p:PublishReadyToRun=false','-p:DebugType=None','-p:DebugSymbols=false'])
-    run([args.dotnet,'build',ROOT/'src/Gongwen.OfficeAddin/Gongwen.OfficeAddin.csproj','-c','Release','-o',payload/'office-addin','-p:DebugType=None','-p:DebugSymbols=false'])
+    run([args.dotnet,'build',ROOT/'src/Gongwen.AddinRegistrar/Gongwen.AddinRegistrar.csproj','-c','Release','-o',payload/'office-addin','-p:DebugType=None','-p:DebugSymbols=false'])
     for name in ['LICENSE','NOTICE.md']:
         shutil.copyfile(ROOT/name,payload/name)
     for name in ['samples','docs']:

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><AssemblyName>Gongwen.AddinRegistrar.Tests</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Gongwen.AddinRegistrar/RegistrationPlan.cs" Link="RegistrationPlan.cs" />
+    <Compile Include="../../src/Gongwen.AddinRegistrar/RegistrationRunner.cs" Link="RegistrationRunner.cs" />
+    <Compile Include="../../src/Gongwen.AddinRegistrar/RegistrarCommandLine.cs" Link="RegistrarCommandLine.cs" />
+  </ItemGroup>
+</Project>

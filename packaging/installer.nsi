@@ -114,8 +114,7 @@ Function un.onInit
   ${EndIf}
 FunctionEnd
 Section "Uninstall"
-  !insertmacro UnregisterAddinView 32
-  !insertmacro UnregisterAddinView 64
+  Call un.UnregisterOfficeAddin
   ; Exact list of installed files, preserve user documents and unknown files.
   !include "uninstall-files.nsh"
   ; If upgraded from v0.1, remove only its known installed files as well.
