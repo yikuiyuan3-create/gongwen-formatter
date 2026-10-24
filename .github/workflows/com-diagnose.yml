@@ -1,0 +1,22 @@
+name: Diagnose Windows COM registration
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Inspect a previously built fixture installation
+        shell: pwsh
+        run: |
+          gh run download 40079442066 --repo $env:GITHUB_REPOSITORY --name windows-package-verification --dir work/diagnostic-input
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/diagnose_com.ps1
