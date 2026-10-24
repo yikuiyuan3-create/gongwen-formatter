@@ -19,4 +19,5 @@ jobs:
         run: |
           gh run download 40079442066 --repo $env:GITHUB_REPOSITORY --name windows-package-verification --dir work/diagnostic-input
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./scripts/diagnose_com.ps1
+          $installer=(Get-ChildItem work/diagnostic-input -Recurse -Filter '*_Setup_*_x64.exe' | Select-Object -First 1).FullName
+          ./scripts/run_standard_user_check.ps1 -Installer $installer
